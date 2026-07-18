@@ -1,4 +1,0 @@
-# /etc/fstab: static file system information.
-#
-# <file system>               <mount point> <type>  <options>                         <dump>  <pass>
-UUID=ROOTFS_UUID_PLACEHOLDER  /             ext4    defaults,errors=remount-ro,x-systemd.growfs  0 0

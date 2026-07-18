@@ -54,7 +54,7 @@ make_image() {
     umount_image
     echo "## Making image $image_name"
     echo '### Cleaning up'
-    rm -rf $mkosi_rootfs/var/cache/dnf/*
+    rm -rf $mkosi_rootfs/var/cache/zypper/*
     rm -rf "$image_dir/$image_name/*"
 
     echo '### Calculating root image size'
@@ -67,78 +67,78 @@ make_image() {
     echo '### Creating rootfs ext4 filesystem on root.img '
     MKE2FS_DEVICE_PHYS_SECTSIZE=4096 MKE2FS_DEVICE_SECTSIZE=4096 mkfs.ext4 -U "$ROOTFS_UUID" -L 'fedora_pipa' "$image_dir/$image_name/root.img"
 
-    echo '### Loop mounting root.img'
-    mount -o loop "$image_dir/$image_name/root.img" "$image_mnt"
+    #echo '### Loop mounting root.img'
+    #mount -o loop "$image_dir/$image_name/root.img" "$image_mnt"
 
-    echo '### Copying files'
-    rsync -aHAX --exclude '/tmp/*' --exclude '/boot/efi' --exclude '/efi' --exclude '/home/*' $mkosi_rootfs/ $image_mnt
-    rsync -aHAX $mkosi_rootfs/home/ $image_mnt/home
-    umount $image_mnt
+    #echo '### Copying files'
+    #rsync -aHAX --exclude '/tmp/*' --exclude '/boot/efi' --exclude '/efi' --exclude '/home/*' $mkosi_rootfs/ $image_mnt
+    #rsync -aHAX $mkosi_rootfs/home/ $image_mnt/home
+    #umount $image_mnt
 
-    echo '### Loop mounting rootfs root subvolume'
-    mount -o loop "$image_dir/$image_name/root.img" "$image_mnt"
+    #echo '### Loop mounting rootfs root subvolume'
+    #mount -o loop "$image_dir/$image_name/root.img" "$image_mnt"
 
-    sed -i "s/ROOTFS_UUID_PLACEHOLDER/$ROOTFS_UUID/" "$image_mnt/etc/fstab"
-    sed -i "s/ROOTFS_UUID_PLACEHOLDER/$ROOTFS_UUID/" "$image_mnt/etc/cmdline"
+    #sed -i "s/ROOTFS_UUID_PLACEHOLDER/$ROOTFS_UUID/" "$image_mnt/etc/fstab"
+    #sed -i "s/ROOTFS_UUID_PLACEHOLDER/$ROOTFS_UUID/" "$image_mnt/etc/cmdline"
 
-    rm -f $image_mnt/etc/resolv.conf
-    echo "nameserver 1.1.1.1" > $image_mnt/etc/resolv.conf
+    #rm -f $image_mnt/etc/resolv.conf
+    #echo "nameserver 1.1.1.1" > $image_mnt/etc/resolv.conf
 
-    echo -e '\n### Generating Initramfs'
-    arch-chroot $image_mnt dracut --force --regenerate-all --verbose
+    #echo -e '\n### Generating Initramfs'
+    #arch-chroot $image_mnt dracut --force --regenerate-all --verbose
 
-    echo '### Reinstalling kernel'
-    local kernel_path="$(arch-chroot $image_mnt bash -c 'find /usr/lib/modules/* -maxdepth 0 -type d')"
-    arch-chroot $image_mnt kernel-install add "$(basename "$kernel_path")" "${kernel_path}/vmlinuz" --verbose
+    #echo '### Reinstalling kernel'
+    #local kernel_path="$(arch-chroot $image_mnt bash -c 'find /usr/lib/modules/* -maxdepth 0 -type d')"
+    #arch-chroot $image_mnt kernel-install add "$(basename "$kernel_path")" "${kernel_path}/vmlinuz" --verbose
 
-    echo "### Enabling system services"
-    # Enable services individually to identify failures
-    for service in NetworkManager sshd systemd-resolved qbootctl.service bootmac-bluetooth; do
-        echo "-> Enabling $service..."
-        if ! arch-chroot $image_mnt systemctl enable "$service"; then
-            echo "ERROR: Failed to enable $service"
-            echo "Debug info: Checking if unit file exists for $service..."
-            service_name="${service%.service}"
-            ls -l "$image_mnt/usr/lib/systemd/system/$service_name.service" "$image_mnt/etc/systemd/system/$service_name.service" 2>/dev/null || echo "  Unit file not found in standard locations."
-            exit 1
-        fi
-    done
+    #echo "### Enabling system services"
+    ## Enable services individually to identify failures
+    #for service in NetworkManager sshd systemd-resolved qbootctl.service bootmac-bluetooth; do
+    #    echo "-> Enabling $service..."
+    #    if ! arch-chroot $image_mnt systemctl enable "$service"; then
+    #        echo "ERROR: Failed to enable $service"
+    #        echo "Debug info: Checking if unit file exists for $service..."
+    #        service_name="${service%.service}"
+    #        ls -l "$image_mnt/usr/lib/systemd/system/$service_name.service" "$image_mnt/etc/systemd/system/$service_name.service" 2>/dev/null || echo "  Unit file not found in standard locations."
+    #        exit 1
+    #    fi
+    #done
 
-    echo "-> Disabling iio-sensor-proxy..."
-    arch-chroot $image_mnt systemctl disable iio-sensor-proxy || echo "Warning: Failed to disable iio-sensor-proxy (it might not be installed)"
+    #echo "-> Disabling iio-sensor-proxy..."
+    #arch-chroot $image_mnt systemctl disable iio-sensor-proxy || echo "Warning: Failed to disable iio-sensor-proxy (it might not be installed)"
 
-    echo "### Disabling systemd-firstboot"
-    arch-chroot $image_mnt rm -f /usr/lib/systemd/system/sysinit.target.wants/systemd-firstboot.service
+    #echo "### Disabling systemd-firstboot"
+    #arch-chroot $image_mnt rm -f /usr/lib/systemd/system/sysinit.target.wants/systemd-firstboot.service
 
-    echo "### Setting permission"
-    arch-chroot $image_mnt find /etc/skel -type d -exec chmod 755 {} \;
-    arch-chroot $image_mnt find /etc/skel -type f -exec chmod 644 {} \;
-    arch-chroot $image_mnt find /var/lib/gdm -type d -exec chmod 744 {} \;
-    arch-chroot $image_mnt find /var/lib/gdm -type f -exec chmod 644 {} \;
+    #echo "### Setting permission"
+    #arch-chroot $image_mnt find /etc/skel -type d -exec chmod 755 {} \;
+    #arch-chroot $image_mnt find /etc/skel -type f -exec chmod 644 {} \;
+    #arch-chroot $image_mnt find /var/lib/gdm -type d -exec chmod 744 {} \;
+    #arch-chroot $image_mnt find /var/lib/gdm -type f -exec chmod 644 {} \;
 
-    echo "### Creating default user"
-    arch-chroot $image_mnt useradd -m -G audio,video,wheel user
-    echo 'user:147147' | arch-chroot $image_mnt chpasswd
+    #echo "### Creating default user"
+    #arch-chroot $image_mnt useradd -m -G audio,video,wheel user
+    #echo 'user:147147' | arch-chroot $image_mnt chpasswd
 
-    echo -e '\n### Cleanup'
-    rm -rf $image_mnt/boot/lost+found/
-    rm -f  $image_mnt/etc/kernel/{entry-token,install.conf}
-    rm -f  $image_mnt/etc/dracut.conf.d/initial-boot.conf
-    rm -f  $image_mnt/etc/yum.repos.d/mkosi*.repo
-    rm -f  $image_mnt/var/lib/systemd/random-seed
-    rm -f $image_mnt/etc/resolv.conf
-    chroot $image_mnt ln -s ../run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+    #echo -e '\n### Cleanup'
+    #rm -rf $image_mnt/boot/lost+found/
+    #rm -f  $image_mnt/etc/kernel/{entry-token,install.conf}
+    #rm -f  $image_mnt/etc/dracut.conf.d/initial-boot.conf
+    #rm -f  $image_mnt/etc/yum.repos.d/mkosi*.repo
+    #rm -f  $image_mnt/var/lib/systemd/random-seed
+    #rm -f $image_mnt/etc/resolv.conf
+    #chroot $image_mnt ln -s ../run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 
-    echo -e '\n### Copying boot image'
-    if ls $image_mnt/boot/boot*.img 1>/dev/null 2>&1; then
-        cp $image_mnt/boot/boot*.img $image_dir/$image_name/boot.img
-    else
-        echo "boot image files not found!"
-        exit 1
-    fi
+    #echo -e '\n### Copying boot image'
+    #if ls $image_mnt/boot/boot*.img 1>/dev/null 2>&1; then
+    #    cp $image_mnt/boot/boot*.img $image_dir/$image_name/boot.img
+    #else
+    #    echo "boot image files not found!"
+    #    exit 1
+    #fi
 
-    echo -e '\n### Unmounting rootfs subvolumes'
-    umount $image_mnt
+    #echo -e '\n### Unmounting rootfs subvolumes'
+    #umount $image_mnt
 
     echo -e '\n### Compressing'
     rm -f $image_dir/"$image_name".zip
